@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Atlas Sovereign V2.5</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { slate: { 850: '#1e293b', 950: '#020617' } },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; transition: background 0.3s; }
+        .glass { backdrop-filter: blur(12px); border: 1px solid; }
+        .dark .glass { background: rgba(30, 41, 59, 0.7); border-color: rgba(255,255,255,0.1); }
+        .light .glass { background: rgba(255, 255, 255, 0.95); border-color: rgba(0,0,0,0.2); }
+        .dark { --bg: #020617; --text: #f1f5f9; --sub: #94a3b8; }
+        .light { --bg: #ffffff; --text: #0f172a; --sub: #475569; }
+        body { background-color: var(--bg); color: var(--text); }
+        .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; font-weight: 900; }
+        input::placeholder { opacity: 0.5; }
+    </style>
+</head>
+<body class="dark pb-32 font-sans overflow-x-hidden">
+
+    <div id="auth-overlay" class="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-6 overflow-y-auto">
+        <h1 class="text-5xl font-black text-blue-600 mb-6 tracking-tighter italic">ATLAS</h1>
+        <div class="w-full max-w-[280px] space-y-2">
+            <input id="init-name" type="text" placeholder="CODENAME" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-center font-bold text-white outline-none text-sm">
+            
+            <div class="flex space-x-2">
+                <button onclick="window.initGender='M';this.classList.add('bg-blue-600');this.classList.remove('bg-slate-800');document.getElementById('btn-f-init').classList.remove('bg-pink-600');document.getElementById('btn-f-init').classList.add('bg-slate-800')" id="btn-m-init" class="flex-1 bg-slate-800 p-3 rounded-xl font-black text-[10px] text-white transition-colors">MALE</button>
+                <button onclick="window.initGender='F';this.classList.add('bg-pink-600');this.classList.remove('bg-slate-800');document.getElementById('btn-m-init').classList.remove('bg-blue-600');document.getElementById('btn-m-init').classList.add('bg-slate-800')" id="btn-f-init" class="flex-1 bg-slate-800 p-3 rounded-xl font-black text-[10px] text-white transition-colors">FEMALE</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <input id="init-age" type="number" placeholder="AGE" class="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center text-white outline-none font-bold text-sm">
+                <input id="init-weight" type="number" placeholder="LBS" class="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center text-white outline-none font-bold text-sm">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <input id="init-ft" type="number" placeholder="FT" class="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center text-white outline-none font-bold text-sm">
+                <input id="init-in" type="number" placeholder="IN" class="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center text-white outline-none font-bold text-sm">
+            </div>
+
+            <button onclick="createAccount()" class="w-full bg-blue-600 text-white p-3 rounded-xl font-black uppercase tracking-widest text-xs mt-2">Initialize</button>
+        </div>
+    </div>
+
+    <div id="notification-area" class="fixed bottom-24 left-0 right-0 z-[80] px-4 pointer-events-none flex flex-col items-center space-y-2"></div>
+
+    <div id="app-interface" class="hidden min-h-screen">
+        <nav class="p-5 sticky top-0 bg-inherit backdrop-blur-md z-40 border-b dark:border-slate-800 light:border-slate-300 flex justify-between items-center">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h2 id="display-name" class="text-xl font-black text-blue-600 uppercase">PLAYER</h2>
+                    <span id="streak-counter" class="text-[10px] bg-orange-500/20 text-orange-600 dark:text-orange-500 px-2 py-0.5 rounded-full font-black">🔥 0</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span id="day-indicator" class="text-[10px] font-black text-blue-500 uppercase tracking-tighter">MONDAY</span>
+                    <span class="text-[10px] font-bold opacity-70">LVL <span id="main-level">1</span></span>
+                </div>
+            </div>
+            <button onclick="toggleSettings()" class="p-2 space-y-1.5 active:scale-90 transition-transform text-blue-600">
+                <div class="w-7 h-1 bg-current rounded-full"></div>
+                <div class="w-5 h-1 bg-current rounded-full"></div>
+            </button>
+        </nav>
+
+        <main class="p-4 space-y-6">
+            <div id="stats-grid" class="grid grid-cols-2 gap-3"></div>
+
+            <div class="flex dark:bg-slate-900 light:bg-slate-100 border dark:border-slate-800 light:border-slate-300 p-1.5 rounded-xl overflow-x-auto scrollbar-hide">
+                <button onclick="switchTab('workouts')" class="px-4 py-2 text-[10px] font-black uppercase rounded-lg w-full">Workouts</button>
+                <button onclick="switchTab('diet')" class="px-4 py-2 text-[10px] font-black uppercase rounded-lg w-full">Diet</button>
+                <button onclick="switchTab('books')" class="px-4 py-2 text-[10px] font-black uppercase rounded-lg w-full">Library</button>
+                <button onclick="switchTab('wealth')" class="px-4 py-2 text-[10px] font-black uppercase rounded-lg w-full">Wealth</button>
+                <button onclick="switchTab('social')" class="px-4 py-2 text-[10px] font-black uppercase rounded-lg w-full">Rank</button>
+            </div>
+
+            <div id="sub-nav" class="flex space-x-6 border-b dark:border-slate-800 light:border-slate-200 pb-2 px-2">
+                <button onclick="toggleHistory(false)" id="sub-active" class="text-xs font-black uppercase pb-2">Active</button>
+                <button onclick="toggleHistory(true)" id="sub-history" class="text-xs font-black uppercase opacity-40 pb-2">History</button>
+            </div>
+
+            <div id="action-container" class="space-y-4 pb-20"></div>
+        </main>
+    </div>
+
+    <div id="action-modal" class="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm hidden flex items-end justify-center">
+        <div id="modal-panel" class="w-full dark:bg-slate-900 light:bg-white rounded-t-3xl p-6 transform translate-y-full transition-transform max-h-[90vh] overflow-y-auto">
+            <h3 id="modal-title" class="text-lg font-black uppercase mb-4 text-center text-blue-600">Action</h3>
+            <div id="modal-content" class="flex flex-col space-y-3"></div>
+            <button onclick="closeModal()" class="w-full mt-6 p-4 text-xs font-black uppercase opacity-50">Close</button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="fixed inset-0 z-[60] bg-black/50 hidden" onclick="if(event.target === this) toggleSettings()">
+        <div id="settings-panel" class="absolute right-0 top-0 bottom-0 w-[260px] dark:bg-slate-950 light:bg-white p-6 transform translate-x-full transition-transform border-l dark:border-slate-800">
+            <h2 class="text-2xl font-black mb-8 tracking-tighter italic text-blue-600">CORE</h2>
+            <div class="space-y-6">
+                <div class="space-y-2">
+                    <label class="text-[9px] uppercase font-black text-blue-500">Codename</label>
+                    <input id="setting-name" type="text" oninput="updateName(this.value)" class="w-full p-3 rounded-xl border dark:bg-black/40 light:bg-slate-100 dark:border-slate-800 light:border-slate-300 font-bold outline-none text-xs">
+                </div>
+                <button onclick="toggleTheme()" class="w-full flex justify-between items-center p-3 rounded-xl border dark:border-slate-800 light:border-slate-300 font-bold text-xs">Theme <div id="theme-dot" class="w-3 h-3 rounded-full bg-blue-500"></div></button>
+                <button onclick="resetDiet()" class="w-full py-3 bg-red-500/10 text-red-600 text-[9px] font-black uppercase border border-red-500/20 rounded-xl">Clear Active Diet</button>
+                <button onclick="hardReset()" class="w-full py-3 opacity-40 text-[9px] font-black uppercase border border-current rounded-xl mt-6">Factory Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const MASTER_DB = {
+            exercises: {
+                "Push (Chest/Shoulders)": [{n: "Bench Press", t: "S"}, {n: "Incline DB Press", t: "S"}, {n: "Overhead Press", t: "S"}, {n: "Lateral Raises", t: "S"}, {n: "Dips", t: "S"}, {n: "Pushups", t: "S"}, {n: "Tricep Pushdowns", t: "S"}],
+                "Pull (Back/Biceps)": [{n: "Deadlift", t: "S"}, {n: "Pullups", t: "S"}, {n: "Barbell Rows", t: "S"}, {n: "Lat Pulldowns", t: "S"}, {n: "Face Pulls", t: "S"}, {n: "Bicep Curls", t: "S"}, {n: "Hammer Curls", t: "S"}],
+                "Legs (Quads/Glutes)": [{n: "Squats", t: "S"}, {n: "Leg Press", t: "S"}, {n: "Romanian Deadlift", t: "S"}, {n: "Leg Extensions", t: "S"}, {n: "Leg Curls", t: "S"}, {n: "Calf Raises", t: "S"}, {n: "Lunges", t: "S"}],
+                "Powerlifting (Max Effort)": [{n: "Paused Bench", t: "S"}, {n: "Paused Squats", t: "S"}, {n: "Deficit Deadlift", t: "S"}, {n: "Rack Pulls", t: "S"}, {n: "Pin Press", t: "S"}, {n: "Front Squat", t: "S"}],
+                "Calisthenics (Bodyweight)": [{n: "Muscle Ups", t: "S"}, {n: "L-Sit", t: "E"}, {n: "Planche Lean", t: "E"}, {n: "Handstand Pushups", t: "S"}, {n: "Dragon Flag", t: "S"}, {n: "Archer Pullups", t: "S"}, {n: "Pistol Squats", t: "S"}],
+                "Recovery & Mobility (Stretch)": [{n: "Pigeon Pose", t: "E"}, {n: "Couch Stretch", t: "E"}, {n: "Cat-Cow", t: "E"}, {n: "Child's Pose", t: "E"}, {n: "Thoracic Rotation", t: "E"}, {n: "Hamstring Stretch", t: "E"}, {n: "Butterfly Stretch", t: "E"}, {n: "Shoulder Dislocates", t: "S"}, {n: "Deep Squat Hold", t: "E"}],
+                "Endurance (Cardio)": [{n: "Running", t: "E"}, {n: "Sprints", t: "E"}, {n: "Cycling", t: "E"}, {n: "Rowing Machine", t: "E"}, {n: "Swimming", t: "E"}, {n: "Jump Rope", t: "E"}, {n: "Burpees", t: "E"}]
+            },
+            books: [
+                {title: "Atomic Habits", desc: "Build systems to master small behaviors for long-term compounding.", xp: 400, pages: 320},
+                {title: "The 48 Laws of Power", desc: "A guide to social dynamics, strategy, and self-preservation.", xp: 800, pages: 452},
+                {title: "Meditations", desc: "Marcus Aurelius on discipline, stoicism, and inner peace.", xp: 500, pages: 180},
+                {title: "Psychology of Money", desc: "Understanding how behavior and ego influence wealth building.", xp: 450, pages: 240},
+                {title: "Can't Hurt Me", desc: "Mental toughness and breaking through physical limitations.", xp: 700, pages: 360},
+                {title: "Deep Work", desc: "Rules for focused success in a distracted world.", xp: 350, pages: 280},
+                {title: "Ego is the Enemy", desc: "Overcoming the internal obstacles to true greatness.", xp: 400, pages: 220}
+            ],
+            diets: [
+                {name: "Lean Bulk", desc: "Surplus for muscle synthesis.", foods: "Steak, Sweet Potato, White Rice, Avocado, Oats.", m: {p: 1.2, c: 2.0, f: 0.4}},
+                {name: "Aggressive Cut", desc: "High protein, low caloric density.", foods: "Chicken Breast, White Fish, Spinach, Egg Whites.", m: {p: 1.5, c: 0.8, f: 0.3}},
+                {name: "Keto Protocol", desc: "Metabolic shift to ketone bodies.", foods: "Salmon, Macadamia Nuts, Ribeye, Butter, Asparagus.", m: {p: 1.0, c: 0.2, f: 1.2}},
+                {name: "Vertical Diet", desc: "High-nutrient, easy-to-digest protocol.", foods: "Bison, White Rice, Bone Broth, Peppers, Carrots.", m: {p: 1.1, c: 1.8, f: 0.5}}
+            ],
+            ranks: [{name: "Grandmaster", xp: 100000}, {name: "Shadow", xp: 45000}, {name: "Nomad", xp: 15000}]
+        };
+
+        let state = {
+            currentTab: 'workouts', showHistory: false, isDark: true, session: [],
+            user: { 
+                name: "", xp: 0, streak: 0, weight: 180, water: 0, age: 25, gender: 'M', ft: 5, in: 10, dailyIntake: 0,
+                stats: { strength: 10, speed: 10, endurance: 10, intelligence: 10, wealth: 10 }, 
+                history: [], savedWorkouts: [], schedule: {}, activeDiet: null, wealthGoals: [],
+                activeBooks: [], completedBooks: [], bookProgress: {}
+            }
+        };
+
+        function calculateMaintenance() {
+            const hCm = (parseFloat(state.user.ft) * 30.48) + (parseFloat(state.user.in) * 2.54);
+            const wKg = parseFloat(state.user.weight) * 0.453592;
+            let bmr = (10 * wKg) + (6.25 * hCm) - (5 * state.user.age);
+            bmr = state.user.gender === 'M' ? bmr + 5 : bmr - 161;
+            return Math.round(bmr * 1.375);
+        }
+
+        function notify(t, m) {
+            const area = document.getElementById('notification-area');
+            const el = document.createElement('div');
+            el.className = `glass w-full max-sm p-4 rounded-xl border-l-4 border-blue-500 animate-slide-up dark:bg-slate-900 shadow-2xl pointer-events-auto`;
+            el.innerHTML = `<h4 class="font-black text-xs uppercase">${t}</h4><p class="text-[10px] font-bold opacity-70">${m}</p>`;
+            area.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }
+
+        function updateUI() {
+            document.body.className = state.isDark ? 'dark' : 'light';
+            document.getElementById('display-name').innerText = state.user.name || "PLAYER";
+            document.getElementById('setting-name').value = state.user.name;
+            document.getElementById('day-indicator').innerText = DAYS[new Date().getDay()];
+            document.getElementById('streak-counter').innerText = `🔥 ${state.user.streak}`;
+            document.getElementById('main-level').innerText = Math.floor(0.1 * Math.sqrt(state.user.xp)) + 1;
+            const g = document.getElementById('stats-grid'); g.innerHTML = '';
+            Object.entries(state.user.stats).forEach(([k, v]) => {
+                g.innerHTML += `<div class="glass p-4 rounded-2xl"><p class="text-[9px] uppercase font-black opacity-60 text-blue-600">${k}</p><p class="text-xl font-black">${v}</p></div>`;
+            });
+        }
+
+        function renderContent() {
+            const container = document.getElementById('action-container'); container.innerHTML = '';
+            document.getElementById('sub-active').className = !state.showHistory ? 'text-xs font-black uppercase pb-2 tab-active' : 'text-xs font-black uppercase opacity-40 pb-2';
+            document.getElementById('sub-history').className = state.showHistory ? 'text-xs font-black uppercase pb-2 tab-active' : 'text-xs font-black uppercase opacity-40 pb-2';
+
+            if (state.showHistory) {
+                const logs = state.user.history.filter(h => h.tab === state.currentTab).reverse();
+                logs.forEach(l => container.innerHTML += `<div class="glass p-4 rounded-xl flex justify-between opacity-80 text-xs font-black uppercase"><span>${l.name}</span><span class="text-blue-600">+${l.xp} XP</span></div>`);
+                if(!logs.length) container.innerHTML = `<p class="text-center py-10 opacity-30 font-black">NO HISTORY LOGS</p>`;
+                return;
+            }
+
+            if (state.currentTab === 'workouts') {
+                const dailyId = state.user.schedule[DAYS[new Date().getDay()]];
+                const dailyW = state.user.savedWorkouts.find(w => w.id === dailyId);
+                container.innerHTML = `<div class="glass p-5 rounded-2xl border-l-4 border-blue-600"><p class="text-[9px] font-black uppercase opacity-60 mb-1">Today's Focus</p><h3 class="font-black text-lg uppercase mb-3">${dailyW ? dailyW.name : 'Rest Day'}</h3>${dailyW ? `<button onclick="loadTemplate('${dailyW.id}')" class="bg-blue-600 text-white w-full p-3 rounded-lg text-[10px] font-black uppercase">Begin Daily Mission</button>` : ''}</div>`;
+                if(state.session.length) {
+                    let sHtml = `<div class="glass p-5 rounded-2xl border-l-4 border-white"><div class="flex justify-between items-center mb-4"><h3 class="font-black text-xs uppercase text-blue-600">Active Telemetry</h3><button onclick="state.session=[];renderContent();" class="text-[8px] font-black uppercase text-red-500 underline">Wipe Active</button></div><div class="space-y-3 mb-4">`;
+                    state.session.forEach((ex, i) => {
+                        sHtml += `<div class="bg-black/5 dark:bg-white/5 p-3 rounded-xl"><div class="flex justify-between text-[10px] font-black uppercase mb-2"><span>${ex.name}</span><button onclick="state.session.splice(${i},1);renderContent()" class="text-red-500">REMOVE</button></div><div class="grid grid-cols-3 gap-2">
+                        ${ex.type === 'S' ? `<input type="number" placeholder="Sets" onchange="state.session[i].sets=this.value" class="bg-white/10 dark:bg-black/40 p-2 rounded text-xs outline-none text-center font-bold"> <input type="number" placeholder="Reps" onchange="state.session[i].reps=this.value" class="bg-white/10 dark:bg-black/40 p-2 rounded text-xs outline-none text-center font-bold"> <input type="number" placeholder="Lbs" onchange="state.session[i].weight=this.value" class="bg-white/10 dark:bg-black/40 p-2 rounded text-xs outline-none text-center font-bold">` :
+                        `<input type="text" placeholder="Min" onchange="state.session[i].time=this.value" class="bg-white/10 dark:bg-black/40 p-2 rounded text-xs outline-none text-center font-bold"> <input type="text" placeholder="MPH" onchange="state.session[i].speed=this.value" class="bg-white/10 dark:bg-black/40 p-2 rounded text-xs outline-none text-center font-bold"> <input type="text" placeholder="Notes" onchange="state.session[i].incline=this.value" class="bg-white/10 dark:bg-black/40 p-2 rounded text-xs outline-none text-center font-bold">`}</div></div>`;
+                    });
+                    container.innerHTML += sHtml + `</div><div class="grid grid-cols-2 gap-2"><button onclick="openSaveModal()" class="bg-slate-800 text-white p-3 rounded-lg text-[9px] font-black uppercase">Save Template</button><button onclick="finishWorkout()" class="bg-blue-600 text-white p-3 rounded-lg text-[9px] font-black uppercase">Finish Sequence</button></div></div>`;
+                }
+                container.innerHTML += `<div class="flex justify-between items-center px-1"><h4 class="text-[10px] font-black uppercase opacity-60">Sequence Library</h4><div class="flex space-x-4"><button onclick="showWeeklyReport()" class="text-[9px] font-black uppercase text-orange-500 underline">Weekly Report</button><button onclick="viewWeeklySchedule()" class="text-[9px] font-black uppercase text-blue-500 underline">Weekly Plan</button></div></div>`;
+                state.user.savedWorkouts.forEach((w, idx) => {
+                    container.innerHTML += `<div class="glass p-4 rounded-xl flex justify-between items-center"><div class="flex flex-col"><span class="font-black text-xs uppercase">${w.name}</span><button onclick="deleteTemplate(${idx})" class="text-[8px] font-black text-red-500 uppercase text-left mt-1">Delete Template</button></div><div class="flex space-x-2"><button onclick="openScheduleModal('${w.id}')" class="bg-slate-800 text-white p-2 rounded">📅</button><button onclick="loadTemplate('${w.id}')" class="bg-blue-600 text-white px-3 py-2 rounded text-[9px] font-black uppercase">Load</button></div></div>`;
+                });
+                Object.entries(MASTER_DB.exercises).forEach(([cat, exes]) => {
+                    let h = `<div class="space-y-2 mt-4"><p class="text-[9px] font-black text-blue-500 uppercase px-2">${cat}</p>`;
+                    exes.forEach(e => h += `<div onclick="state.session.push({name:'${e.n}', type:'${e.t}', cat:'${cat}'});renderContent()" class="glass p-4 rounded-xl text-xs font-black uppercase cursor-pointer active:scale-95 transition-transform">${e.n}</div>`);
+                    container.innerHTML += h + `</div>`;
+                });
+            } else if (state.currentTab === 'diet') {
+                const maintenance = calculateMaintenance();
+                const currentIntake = state.user.dailyIntake || 0;
+                container.innerHTML = `<div class="glass p-5 rounded-2xl border-l-4 border-blue-600 text-center mb-4"><span class="text-[10px] font-black opacity-40 uppercase">Daily Maintenance</span><h2 class="text-4xl font-black italic tracking-tighter">${maintenance} <span class="text-sm">KCAL</span></h2><div class="mt-3 p-3 bg-black/5 dark:bg-white/5 rounded-xl text-left border dark:border-white/5"><p class="text-[9px] font-bold opacity-70 leading-relaxed uppercase"><span class="text-blue-500">Metric explanation:</span> Based on <span class="text-blue-600">Mifflin-St Jeor</span> calculation.</p></div></div><div class="glass p-5 rounded-2xl border-l-4 border-orange-500 flex flex-col items-center mb-4"><span class="text-[10px] font-black opacity-40 uppercase mb-2">Daily Intake Counter</span><h3 class="text-4xl font-black italic">${currentIntake} <span class="text-xs opacity-50 uppercase">Kcal In</span></h3><div class="flex space-x-3 mt-4 w-full"><button onclick="updateIntake(-100)" class="flex-1 bg-slate-800 p-3 rounded-xl font-black text-xs uppercase">-100</button><button onclick="updateIntake(100)" class="flex-1 bg-blue-600 p-3 rounded-xl font-black text-xs uppercase">+100</button></div><button onclick="state.user.dailyIntake=0;save();renderContent();" class="mt-4 text-[9px] font-black uppercase opacity-30">Reset Counter</button></div><div class="grid grid-cols-2 gap-3"><div class="glass p-4 rounded-2xl flex flex-col items-center"><span class="text-[8px] font-black text-blue-600 uppercase mb-1">Hydration</span><h3 class="text-xl font-black">${state.user.water} <span class="text-[10px] opacity-40">GL</span></h3><button onclick="state.user.water++;save();renderContent();" class="mt-2 bg-blue-600 text-white w-full rounded-lg font-black py-1 text-lg">+</button></div><div class="glass p-4 rounded-2xl flex flex-col justify-center items-center"><button onclick="openMealLogger()" class="bg-emerald-600 text-white w-full h-full rounded-xl font-black uppercase text-[10px]">Log Intake</button></div></div>`;
+                if(!state.user.activeDiet) {
+                    MASTER_DB.diets.forEach((d) => {
+                        container.innerHTML += `<div onclick="openDietDetails('${d.name}')" class="glass p-5 rounded-2xl border-l-4 border-green-500 mt-3 cursor-pointer"><h4 class="font-black text-sm uppercase">${d.name}</h4><p class="text-[10px] opacity-70 mt-1">${d.desc}</p></div>`;
+                    });
+                } else {
+                    const d = state.user.activeDiet;
+                    const w = state.user.weight || 180;
+                    container.innerHTML += `<div class="glass p-5 rounded-2xl border-l-4 border-green-500 mt-4"><div class="flex justify-between items-start mb-4"><div><h3 class="font-black text-lg uppercase text-green-600 mb-1">${d.name}</h3><p class="text-[10px] font-bold opacity-60">${d.desc}</p></div><div class="text-right"><span class="text-[9px] font-black opacity-40 uppercase">Bodyweight</span><input type="number" value="${w}" onchange="state.user.weight=this.value;save();renderContent();" class="block w-16 bg-black/10 dark:bg-white/5 rounded p-1 text-center font-bold text-xs"></div></div><div class="grid grid-cols-3 gap-2 mb-6"><div class="bg-black/5 p-3 rounded-xl text-center"><span class="block text-[8px] font-black uppercase opacity-40">Protein</span><span class="font-black text-sm text-blue-500">${Math.round(w * d.m.p)}g</span></div><div class="bg-black/5 p-3 rounded-xl text-center"><span class="block text-[8px] font-black uppercase opacity-40">Carbs</span><span class="font-black text-sm text-green-500">${Math.round(w * d.m.c)}g</span></div><div class="bg-black/5 p-3 rounded-xl text-center"><span class="block text-[8px] font-black uppercase opacity-40">Fats</span><span class="font-black text-sm text-orange-500">${Math.round(w * d.m.f)}g</span></div></div><div class="bg-black/5 dark:bg-white/5 p-4 rounded-xl mb-4 text-xs font-black leading-relaxed text-blue-600">${d.foods}</div><button onclick="state.user.xp+=150;state.user.history.push({tab:'diet',name:'Protocol Day Met',xp:150});state.user.water=0;save();updateUI();notify('Success','Protocol Compliance Saved');" class="w-full bg-green-600 text-white p-4 rounded-xl font-black uppercase text-[10px]">Finish Daily Protocol (+150 XP)</button></div>`;
+                }
+            } else if (state.currentTab === 'books') {
+                container.innerHTML = `<div class="glass p-5 rounded-2xl bg-blue-600/10 border-blue-600/20"><h4 class="text-xs font-black uppercase mb-4 text-blue-600">Active Reading List</h4><div id="active-books-list" class="space-y-4"></div></div><h4 class="text-[10px] font-black uppercase opacity-60 mt-6 mb-2">Available on Shelf</h4><div id="shelf-list" class="space-y-3"></div>`;
+                state.user.activeBooks.forEach(title => {
+                    const b = MASTER_DB.books.find(x => x.title === title);
+                    const cur = state.user.bookProgress[title] || 0;
+                    const perc = Math.floor((cur / b.pages) * 100);
+                    document.getElementById('active-books-list').innerHTML += `<div class="glass p-4 rounded-xl"><div class="flex justify-between items-center mb-2"><span class="font-black text-xs uppercase">${b.title}</span><span class="text-xs font-mono text-blue-500">${perc}%</span></div><div class="w-full bg-black/10 dark:bg-white/10 h-1 rounded-full mb-4 overflow-hidden"><div class="bg-blue-600 h-full" style="width:${perc}%"></div></div><div class="flex space-x-2"><input type="number" id="pg-${b.title}" placeholder="Page" class="flex-1 bg-white/10 dark:bg-black/40 p-2 rounded text-xs outline-none font-bold text-center"> <button onclick="updatePage('${b.title}', ${b.pages})" class="bg-blue-600 text-white px-4 rounded text-[9px] font-black uppercase">Sync</button></div></div>`;
+                });
+                MASTER_DB.books.filter(b => !state.user.activeBooks.includes(b.title) && !state.user.completedBooks.includes(b.title)).forEach(b => {
+                    document.getElementById('shelf-list').innerHTML += `<div onclick="openBookDetails('${b.title}')" class="glass p-4 rounded-xl cursor-pointer"><h5 class="font-black text-xs uppercase">${b.title}</h5><p class="text-[10px] opacity-60">${b.pages} Pages | +${b.xp} XP</p></div>`;
+                });
+            } else if (state.currentTab === 'wealth') {
+                container.innerHTML = `<div class="glass p-5 rounded-2xl border-l-4 border-emerald-600"><input id="wn" type="text" placeholder="Goal Name" class="w-full bg-black/5 dark:bg-black/40 p-3 rounded-lg mb-2 text-xs outline-none font-black"><input id="wt" type="number" placeholder="Target ($)" class="w-full bg-black/5 dark:bg-black/40 p-3 rounded-lg mb-3 text-xs outline-none font-black"><button onclick="addWealth()" class="w-full bg-emerald-600 text-white p-3 rounded-xl font-black uppercase text-[10px]">Set Milestone</button></div><div id="w-list" class="space-y-3"></div>`;
+                state.user.wealthGoals.forEach((g, i) => {
+                    const p = Math.min(100, (g.cur / g.tar) * 100);
+                    document.getElementById('w-list').innerHTML += `<div class="glass p-5 rounded-2xl"><div class="flex justify-between text-xs font-black uppercase mb-2"><span>${g.name}</span><span>$${g.cur}/$${g.tar}</span></div><div class="w-full bg-black/10 dark:bg-white/10 h-2 rounded-full mb-4 overflow-hidden"><div class="bg-emerald-500 h-full" style="width:${p}%"></div></div><div class="flex space-x-2"><input id="wi-${i}" type="number" placeholder="Amount" class="flex-1 bg-black/5 dark:bg-black/30 p-2 rounded text-xs outline-none font-black"> <button onclick="deposit(${i})" class="bg-slate-700 text-white px-4 rounded text-[9px] font-black uppercase">Sync Deposit</button></div></div>`;
+                });
+            } else if (state.currentTab === 'social') {
+                const r = [...MASTER_DB.ranks, {name: state.user.name, xp: state.user.xp}].sort((a,b) => b.xp - a.xp);
+                r.forEach((u, i) => container.innerHTML += `<div class="glass p-4 rounded-xl flex justify-between items-center ${u.name === state.user.name ? 'border-2 border-blue-500 shadow-lg' : 'opacity-40'}"><span class="font-black opacity-20 text-lg italic">#${i+1}</span><span class="font-black uppercase text-xs">${u.name || 'ANON'}</span><span class="font-mono text-xs text-blue-600">${u.xp} XP</span></div>`);
+            }
+        }
+
+        function updateIntake(v) { state.user.dailyIntake = Math.max(0, (state.user.dailyIntake || 0) + v); save(); renderContent(); }
+        function openMealLogger() {
+            const mc = document.getElementById('modal-content'); document.getElementById('modal-title').innerText = "Log Fuel";
+            mc.innerHTML = `<input id="meal-input" type="text" placeholder="WHAT DID YOU EAT?" class="bg-black/5 dark:bg-black/30 p-4 rounded-xl outline-none mb-4 font-black text-center text-emerald-600 uppercase w-full"><button onclick="logMeal()" class="bg-emerald-600 text-white p-4 rounded-xl font-black uppercase w-full">Commit to Log</button>`;
+            showModal();
+        }
+        function logMeal() {
+            const val = document.getElementById('meal-input').value; if(!val) return;
+            state.user.history.push({tab: 'diet', name: val.toUpperCase(), xp: 20, meal: true});
+            state.user.xp += 20; save(); closeModal(); renderContent(); updateUI();
+            notify("Archive Updated", "Nutritional fuel recorded.");
+        }
+        function showWeeklyReport() {
+            const mc = document.getElementById('modal-content'); document.getElementById('modal-title').innerText = "Weekly Analytics";
+            const history = state.user.history.filter(h => h.tab === 'workouts');
+            const totals = {}; let totalEx = 0;
+            history.forEach(h => { if(h.details) h.details.forEach(ex => { totals[ex.cat] = (totals[ex.cat] || 0) + 1; totalEx++; }); });
+            mc.innerHTML = `<p class="text-[10px] font-black text-center mb-4 opacity-50 uppercase">Distribution of Focus</p>`;
+            if(!totalEx) mc.innerHTML += `<p class="text-center py-10 opacity-30 font-black">COMPLETE A WORKOUT TO SYNC ANALYTICS</p>`;
+            Object.entries(totals).forEach(([cat, count]) => {
+                const p = Math.floor((count / totalEx) * 100);
+                mc.innerHTML += `<div class="glass p-4 rounded-xl mb-2 flex justify-between items-center"><span class="text-xs font-black uppercase">${cat}</span><div class="flex items-center space-x-3"><span class="text-blue-500 font-mono font-bold">${p}%</span><div class="w-20 bg-black/20 h-1.5 rounded-full overflow-hidden"><div class="bg-blue-600 h-full" style="width:${p}%"></div></div></div></div>`;
+            });
+            showModal();
+        }
+        function finishWorkout() {
+            const sessionData = JSON.parse(JSON.stringify(state.session));
+            state.user.xp += 300; state.user.stats.strength++; state.user.stats.endurance++; state.user.stats.speed++;
+            state.user.history.push({tab: 'workouts', name: 'Sequence Finished', xp: 300, details: sessionData});
+            state.user.streak++; state.session = []; save(); updateUI(); renderContent();
+            notify("Rank Up", "+300 XP and Stats Sync Complete");
+        }
+        function openDietDetails(name) {
+            const d = MASTER_DB.diets.find(x => x.name === name);
+            const mc = document.getElementById('modal-content'); document.getElementById('modal-title').innerText = "Dietary Profile";
+            mc.innerHTML = `<h2 class="text-lg font-black uppercase text-blue-600">${d.name}</h2><p class="text-xs font-bold opacity-70">${d.desc}</p><div class="p-4 bg-black/5 rounded-xl text-xs font-black text-blue-500">${d.foods}</div><button onclick="state.user.activeDiet=MASTER_DB.diets.find(x=>x.name==='${d.name}');save();closeModal();renderContent();" class="bg-blue-600 text-white p-4 rounded-xl font-black uppercase">Activate Protocol</button>`;
+            showModal();
+        }
+        function openBookDetails(title) {
+            const b = MASTER_DB.books.find(x => x.title === title);
+            const mc = document.getElementById('modal-content'); document.getElementById('modal-title').innerText = "Repository Entry";
+            mc.innerHTML = `<h2 class="text-lg font-black uppercase text-blue-600">${b.title}</h2><p class="text-xs font-bold opacity-70">${b.desc}</p><p class="text-[10px] font-black uppercase opacity-50">${b.pages} Pages</p><button onclick="state.user.activeBooks.push('${b.title}');save();closeModal();renderContent();" class="bg-blue-600 text-white p-4 rounded-xl font-black uppercase">Move to Active</button>`;
+            showModal();
+        }
+        function updatePage(title, total) {
+            const pg = parseInt(document.getElementById(`pg-${title}`).value); if(!pg) return;
+            state.user.bookProgress[title] = pg;
+            if(pg >= total) {
+                state.user.xp += 1000; state.user.stats.intelligence += 2;
+                state.user.completedBooks.push(title); state.user.activeBooks = state.user.activeBooks.filter(t => t !== title);
+                state.user.history.push({tab: 'books', name: title, xp: 1000});
+                notify("Mission Complete", `${title} Mastery Achieved`);
+            }
+            save(); renderContent(); updateUI();
+        }
+        function openSaveModal() {
+            const mc = document.getElementById('modal-content'); document.getElementById('modal-title').innerText = "Save Protocol";
+            mc.innerHTML = `<input id="tn" type="text" placeholder="e.g. MORNING PUSH" class="bg-black/5 dark:bg-black/30 p-4 rounded-xl outline-none mb-4 font-black text-center text-blue-600 uppercase w-full"><button onclick="confirmSave()" class="bg-blue-600 text-white p-4 rounded-xl font-black uppercase w-full">Confirm Save</button>`;
+            showModal();
+        }
+        function confirmSave() {
+            const n = document.getElementById('tn').value; if(!n) return;
+            state.user.savedWorkouts.push({id: 'w'+Date.now(), name: n.toUpperCase(), exes: JSON.parse(JSON.stringify(state.session))});
+            save(); closeModal(); renderContent(); notify("Saved", "Protocol synced to library.");
+        }
+        function openScheduleModal(id) {
+            const mc = document.getElementById('modal-content'); document.getElementById('modal-title').innerText = "Assign to Day"; mc.innerHTML = '';
+            DAYS.forEach(d => mc.innerHTML += `<button onclick="state.user.schedule['${d}']='${id}';save();closeModal();renderContent();" class="p-4 glass rounded-xl text-xs font-black uppercase flex justify-between"><span>${d}</span> <span class="text-blue-500">${state.user.schedule[d] === id ? 'SELECTED' : ''}</span></button>`);
+            showModal();
+        }
+        function viewWeeklySchedule() {
+            const mc = document.getElementById('modal-content'); document.getElementById('modal-title').innerText = "Global Schedule"; mc.innerHTML = '';
+            DAYS.forEach(d => {
+                const wid = state.user.schedule[d]; const w = state.user.savedWorkouts.find(x => x.id === wid);
+                mc.innerHTML += `<div class="p-4 glass rounded-xl flex justify-between items-center"><span class="text-[10px] font-black uppercase opacity-40">${d}</span><span class="text-xs font-black uppercase">${w ? w.name : 'REST'}</span></div>`;
+            });
+            mc.innerHTML += `<button onclick="state.user.schedule={};save();closeModal();renderContent();notify('System Clear','Weekly schedule purged');" class="mt-4 w-full p-4 bg-red-600/20 text-red-600 text-[10px] font-black uppercase border border-red-600/30 rounded-xl">Wipe Schedule</button>`;
+            showModal();
+        }
+        function deleteTemplate(idx) { if(confirm("ERASE THIS TEMPLATE?")) { state.user.savedWorkouts.splice(idx,1); save(); renderContent(); } }
+        function addWealth() {
+            const n = document.getElementById('wn').value; const t = document.getElementById('wt').value;
+            if(!n || !t) return; state.user.wealthGoals.push({name: n.toUpperCase(), tar: parseFloat(t), cur: 0});
+            save(); renderContent();
+        }
+        function deposit(i) {
+            const v = parseFloat(document.getElementById(`wi-${i}`).value); if(!v) return;
+            state.user.wealthGoals[i].cur += v;
+            if(state.user.wealthGoals[i].cur >= state.user.wealthGoals[i].tar) {
+                state.user.xp += 2000; state.user.stats.wealth += 5;
+                state.user.history.push({tab:'wealth', name: state.user.wealthGoals[i].name, xp: 2000});
+                state.user.wealthGoals.splice(i, 1);
+            }
+            save(); updateUI(); renderContent();
+        }
+        function toggleTheme() { state.isDark = !state.isDark; save(); updateUI(); }
+        function loadTemplate(id) { state.session = JSON.parse(JSON.stringify(state.user.savedWorkouts.find(w=>w.id===id).exes)); renderContent(); }
+        function resetDiet() { state.user.activeDiet = null; save(); updateUI(); renderContent(); toggleSettings(); }
+        function switchTab(t) { state.currentTab = t; state.showHistory = false; renderContent(); }
+        function toggleHistory(h) { state.showHistory = h; renderContent(); }
+        function toggleSettings() { const m = document.getElementById('settings-modal'); const p = document.getElementById('settings-panel'); if(m.classList.contains('hidden')){ m.classList.remove('hidden'); setTimeout(()=>p.classList.replace('translate-x-full','translate-x-0'),10); } else { p.classList.replace('translate-x-0','translate-x-full'); setTimeout(()=>m.classList.add('hidden'),300); } }
+        function updateName(v) { state.user.name = v; updateUI(); save(); }
+        function save() { localStorage.setItem('atlas_sov_final_v6', JSON.stringify(state)); }
+        function showModal() { document.getElementById('action-modal').classList.remove('hidden'); setTimeout(() => document.getElementById('modal-panel').classList.replace('translate-y-full', 'translate-y-0'), 10); }
+        function closeModal() { document.getElementById('modal-panel').classList.replace('translate-y-0', 'translate-y-full'); setTimeout(() => document.getElementById('action-modal').classList.add('hidden'), 300); }
+        function init() { 
+            const s = localStorage.getItem('atlas_sov_final_v6'); 
+            if(s){ state = JSON.parse(s); document.getElementById('auth-overlay').classList.add('hidden'); document.getElementById('app-interface').classList.remove('hidden'); updateUI(); switchTab('workouts'); } 
+        }
+        function createAccount() { 
+            const n = document.getElementById('init-name').value; const a = document.getElementById('init-age').value; const w = document.getElementById('init-weight').value; const ft = document.getElementById('init-ft').value; const inch = document.getElementById('init-in').value;
+            if(!n || !a || !w || !ft || !window.initGender) return alert("COMPLETE ALL SCANS"); 
+            state.user.name = n; state.user.age = parseInt(a); state.user.weight = parseFloat(w); state.user.ft = parseInt(ft); state.user.in = parseInt(inch || 0); state.user.gender = window.initGender;
+            save(); document.getElementById('auth-overlay').classList.add('hidden'); document.getElementById('app-interface').classList.remove('hidden'); updateUI(); switchTab('workouts'); 
+        }
+        function hardReset() { if(confirm("WIPE DATA?")) { localStorage.clear(); location.reload(); } }
+        init();
+    </script>
+</body>
+</html>
